@@ -1,0 +1,29 @@
+# ============================================================
+# Forms2APEX Accelerator
+# Archivos Oracle Forms propietarios / Golden Samples
+# ============================================================
+
+# Oracle Forms binaries
+samples/**/source/*.fmb
+samples/**/source/*.FMB
+
+# XML generado desde Oracle Forms
+samples/**/source/*.xml
+samples/**/source/*.XML
+
+# Oracle Forms additional sources
+samples/**/source/*.mmb
+samples/**/source/*.MMB
+samples/**/source/*.olb
+samples/**/source/*.OLB
+samples/**/source/*.pll
+samples/**/source/*.PLL
+samples/**/source/*.pld
+samples/**/source/*.PLD
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# VS Code local settings
+.vscode/
