@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<f2a-form-fixture
+    format="F2A_SYNTHETIC_V1"
+    name="F2A_CUSTOMERS_FORM">
+
+    <metadata>
+        <description>
+            Synthetic Oracle Forms-like sample created for Forms2APEX Accelerator.
+        </description>
+        <source-type>SYNTHETIC</source-type>
+        <target-platform>ORACLE_APEX</target-platform>
+    </metadata>
+
+    <blocks>
+
+        <block
+            name="CUSTOMERS"
+            type="DATABASE"
+            database-block="Y"
+            data-source="CUSTOMERS"
+            records-displayed="1">
+
+            <items>
+
+                <item
+                    name="CUSTOMER_ID"
+                    type="TEXT_ITEM"
+                    data-type="NUMBER"
+                    database-item="Y"
+                    column-name="CUSTOMER_ID"
+                    required="Y"/>
+
+                <item
+                    name="FIRST_NAME"
+                    type="TEXT_ITEM"
+                    data-type="VARCHAR2"
+                    database-item="Y"
+                    column-name="FIRST_NAME"
+                    required="Y"/>
+
+                <item
+                    name="LAST_NAME"
+                    type="TEXT_ITEM"
+                    data-type="VARCHAR2"
+                    database-item="Y"
+                    column-name="LAST_NAME"
+                    required="Y"/>
+
+                <item
+                    name="EMAIL"
+                    type="TEXT_ITEM"
+                    data-type="VARCHAR2"
+                    database-item="Y"
+                    column-name="EMAIL"
+                    required="Y">
+
+                    <triggers>
+
+                        <trigger name="WHEN-VALIDATE-ITEM">
+                            <source-code><![CDATA[
+BEGIN
+    validate_email(:customers.email);
+END;
+                            ]]></source-code>
+                        </trigger>
+
+                    </triggers>
+
+                </item>
+
+                <item
+                    name="STATUS"
+                    type="LIST_ITEM"
+                    data-type="VARCHAR2"
+                    database-item="Y"
+                    column-name="STATUS"
+                    required="Y"
+                    lov-name="LOV_STATUS"/>
+
+            </items>
+
+            <triggers>
+
+                <trigger name="PRE-INSERT">
+                    <source-code><![CDATA[
+BEGIN
+    IF :customers.customer_id IS NULL THEN
+        SELECT customers_seq.NEXTVAL
+          INTO :customers.customer_id
+          FROM dual;
+    END IF;
+END;
+                    ]]></source-code>
+                </trigger>
+
+                <trigger name="POST-QUERY">
+                    <source-code><![CDATA[
+BEGIN
+    NULL;
+END;
+                    ]]></source-code>
+                </trigger>
+
+            </triggers>
+
+        </block>
+
+
+        <block
+            name="CONTROL"
+            type="CONTROL"
+            database-block="N"
+            records-displayed="1">
+
+            <items>
+
+                <item
+                    name="BTN_SAVE"
+                    type="PUSH_BUTTON"
+                    database-item="N">
+
+                    <triggers>
+
+                        <trigger name="WHEN-BUTTON-PRESSED">
+                            <source-code><![CDATA[
+BEGIN
+    save_customer;
+END;
+                            ]]></source-code>
+                        </trigger>
+
+                    </triggers>
+
+                </item>
+
+                <item
+                    name="BTN_CANCEL"
+                    type="PUSH_BUTTON"
+                    database-item="N"/>
+
+            </items>
+
+        </block>
+
+    </blocks>
+
+
+    <form-triggers>
+
+        <trigger name="WHEN-NEW-FORM-INSTANCE">
+            <source-code><![CDATA[
+BEGIN
+    GO_BLOCK('CUSTOMERS');
+    EXECUTE_QUERY;
+END;
+            ]]></source-code>
+        </trigger>
+
+    </form-triggers>
+
+
+    <program-units>
+
+        <program-unit
+            name="VALIDATE_EMAIL"
+            type="PROCEDURE">
+
+            <source-code><![CDATA[
+PROCEDURE validate_email (
+    p_email IN VARCHAR2
+)
+IS
+BEGIN
+
+    IF p_email IS NULL
+       OR INSTR(p_email, '@') = 0
+    THEN
+        RAISE FORM_TRIGGER_FAILURE;
+    END IF;
+
+END validate_email;
+            ]]></source-code>
+
+        </program-unit>
+
+
+        <program-unit
+            name="SAVE_CUSTOMER"
+            type="PROCEDURE">
+
+            <source-code><![CDATA[
+PROCEDURE save_customer
+IS
+BEGIN
+
+    f2a_customer_api.save_customer(
+        p_customer_id => :customers.customer_id,
+        p_first_name  => :customers.first_name,
+        p_last_name   => :customers.last_name,
+        p_email       => :customers.email,
+        p_status      => :customers.status
+    );
+
+    COMMIT_FORM;
+
+END save_customer;
+            ]]></source-code>
+
+        </program-unit>
+
+    </program-units>
+
+
+    <lovs>
+
+        <lov name="LOV_STATUS">
+
+            <values>
+
+                <value
+                    return-value="ACTIVE"
+                    display-value="Active"/>
+
+                <value
+                    return-value="INACTIVE"
+                    display-value="Inactive"/>
+
+            </values>
+
+        </lov>
+
+    </lovs>
+
+
+    <expected-results>
+
+        <forms>1</forms>
+        <blocks>2</blocks>
+        <items>7</items>
+        <triggers>5</triggers>
+        <program-units>2</program-units>
+        <lovs>1</lovs>
+
+    </expected-results>
+
+</f2a-form-fixture>
