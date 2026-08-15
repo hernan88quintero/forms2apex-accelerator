@@ -27,3 +27,6 @@ Thumbs.db
 
 # VS Code local settings
 .vscode/
+
+# Python virtual environment
+.venv/
