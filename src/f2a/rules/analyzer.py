@@ -3,7 +3,14 @@ from __future__ import annotations
 import re
 
 from f2a.model import FormModel
-from f2a.rules.model import MigrationFinding
+from f2a.rules.builtins import (
+    BUILTIN_CATALOG,
+    get_builtin_definition,
+)
+from f2a.rules.model import (
+    BuiltinFinding,
+    MigrationFinding,
+)
 
 
 TRIGGER_APEX_PATTERNS = {
@@ -93,12 +100,17 @@ PATTERN_GUIDANCE = {
 }
 
 
-KNOWN_FORMS_BUILTINS = (
-    "GO_BLOCK",
-    "EXECUTE_QUERY",
-    "COMMIT_FORM",
-    "FORM_TRIGGER_FAILURE",
+# El catálogo es ahora la única fuente de verdad de built-ins conocidos.
+KNOWN_FORMS_BUILTINS = tuple(
+    BUILTIN_CATALOG.keys()
 )
+
+
+RISK_RANK = {
+    "LOW": 1,
+    "MEDIUM": 2,
+    "HIGH": 3,
+}
 
 
 def _contains_token(
@@ -154,6 +166,49 @@ def _get_apex_pattern(
         ),
         "MANUAL_REVIEW",
     )
+
+
+def _build_builtin_findings(
+    builtins: tuple[str, ...],
+) -> tuple[BuiltinFinding, ...]:
+
+    details: list[BuiltinFinding] = []
+
+    for builtin_name in builtins:
+        definition = get_builtin_definition(
+            builtin_name
+        )
+
+        if definition is None:
+            continue
+
+        details.append(
+            BuiltinFinding(
+                name=definition.name,
+                category=definition.category,
+                apex_strategy=definition.apex_strategy,
+                risk=definition.risk,
+            )
+        )
+
+    return tuple(details)
+
+
+def _calculate_effective_risk(
+    base_risk: str,
+    builtin_details: tuple[BuiltinFinding, ...],
+) -> str:
+
+    effective_risk = base_risk
+
+    for detail in builtin_details:
+        if (
+            RISK_RANK.get(detail.risk, 0)
+            > RISK_RANK.get(effective_risk, 0)
+        ):
+            effective_risk = detail.risk
+
+    return effective_risk
 
 
 def _get_migration_guidance(
@@ -235,8 +290,8 @@ def analyze_form(
             )
         )
 
-        # Analiza no solo el código del trigger,
-        # sino también los Program Units referenciados.
+        # Analiza el trigger y también los Program Units
+        # invocados directamente por él.
         expanded_source = source_code
 
         for unit_name in referenced_units:
@@ -249,6 +304,10 @@ def analyze_form(
             expanded_source
         )
 
+        builtin_details = _build_builtin_findings(
+            builtins
+        )
+
         apex_pattern = _get_apex_pattern(
             scope,
             trigger.name,
@@ -256,7 +315,7 @@ def analyze_form(
 
         (
             complexity,
-            risk,
+            base_risk,
             effort,
             confidence,
             automation_level,
@@ -264,6 +323,11 @@ def analyze_form(
         ) = _get_migration_guidance(
             apex_pattern,
             builtins,
+        )
+
+        risk = _calculate_effective_risk(
+            base_risk,
+            builtin_details,
         )
 
         finding = MigrationFinding(
@@ -278,14 +342,15 @@ def analyze_form(
             automation_level=automation_level,
             recommendation=recommendation,
             builtins=builtins,
+            builtin_details=builtin_details,
             referenced_program_units=referenced_units,
         )
 
         findings.append(finding)
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
     # ITEM y BLOCK triggers
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     for block in model.blocks:
 
@@ -309,9 +374,9 @@ def analyze_form(
                 trigger=trigger,
             )
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
     # FORM triggers
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     for trigger in model.form_triggers:
 

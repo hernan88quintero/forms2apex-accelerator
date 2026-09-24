@@ -16,17 +16,24 @@ def format_values(values: tuple[str, ...]) -> str:
     return ", ".join(values)
 
 
+def increment_counter(
+    counter: dict[str, int],
+    key: str,
+) -> None:
+    counter[key] = counter.get(key, 0) + 1
+
+
 def main() -> None:
 
     print()
     print("Forms2APEX Accelerator - Migration Analysis")
-    print("=" * 60)
+    print("=" * 70)
     print(f"Fixture : {FIXTURE}")
 
     model = parse_form_xml(FIXTURE)
     findings = analyze_form(model)
 
-    # FormModel todavía no almacena el nombre del Form.
+    # FormModel todavía no almacena el nombre del formulario.
     # Por ahora lo derivamos del nombre del fixture.
     form_name = FIXTURE.stem.upper()
 
@@ -35,11 +42,15 @@ def main() -> None:
     print(f"Findings : {len(findings)}")
     print()
 
+    # ----------------------------------------------------------
+    # Finding detail
+    # ----------------------------------------------------------
+
     for index, finding in enumerate(
         findings,
         start=1,
     ):
-        print("-" * 60)
+        print("-" * 70)
         print(f"[{index}] {finding.object_name}")
         print()
 
@@ -62,137 +73,209 @@ def main() -> None:
             f"{format_values(finding.builtins)}"
         )
 
+        # ------------------------------------------------------
+        # Built-in semantic detail
+        # ------------------------------------------------------
+
+        if finding.builtin_details:
+
+            print()
+            print("Built-in Analysis:")
+
+            for detail in finding.builtin_details:
+                print(
+                    f"  - {detail.name}"
+                )
+                print(
+                    f"    Category      : {detail.category}"
+                )
+                print(
+                    f"    APEX Strategy : {detail.apex_strategy}"
+                )
+                print(
+                    f"    Risk          : {detail.risk}"
+                )
+
         print()
         print("Recommendation:")
         print(finding.recommendation)
 
-    print("-" * 60)
+    print("-" * 70)
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
+    # Summary counters
+    # ----------------------------------------------------------
+
+    patterns: dict[str, int] = {}
+    complexities: dict[str, int] = {}
+    risks: dict[str, int] = {}
+    confidences: dict[str, int] = {}
+    automation_levels: dict[str, int] = {}
+
+    builtin_categories: dict[str, int] = {}
+    builtin_strategies: dict[str, int] = {}
+    builtin_usage: dict[str, int] = {}
+
+    for finding in findings:
+
+        increment_counter(
+            patterns,
+            finding.apex_pattern,
+        )
+
+        increment_counter(
+            complexities,
+            finding.complexity,
+        )
+
+        increment_counter(
+            risks,
+            finding.risk,
+        )
+
+        increment_counter(
+            confidences,
+            finding.confidence,
+        )
+
+        increment_counter(
+            automation_levels,
+            finding.automation_level,
+        )
+
+        for detail in finding.builtin_details:
+
+            increment_counter(
+                builtin_categories,
+                detail.category,
+            )
+
+            increment_counter(
+                builtin_strategies,
+                detail.apex_strategy,
+            )
+
+            increment_counter(
+                builtin_usage,
+                detail.name,
+            )
+
+    # ----------------------------------------------------------
     # Summary by APEX Pattern
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     print()
     print("Summary by APEX Pattern")
-    print("=" * 60)
-
-    patterns: dict[str, int] = {}
-
-    for finding in findings:
-        patterns[finding.apex_pattern] = (
-            patterns.get(
-                finding.apex_pattern,
-                0,
-            )
-            + 1
-        )
+    print("=" * 70)
 
     for pattern, count in sorted(
         patterns.items()
     ):
-        print(f"{pattern:<30} {count}")
+        print(f"{pattern:<40} {count}")
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
     # Summary by Complexity
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     print()
     print("Summary by Complexity")
-    print("=" * 60)
-
-    complexities: dict[str, int] = {}
-
-    for finding in findings:
-        complexities[finding.complexity] = (
-            complexities.get(
-                finding.complexity,
-                0,
-            )
-            + 1
-        )
+    print("=" * 70)
 
     for complexity, count in sorted(
         complexities.items()
     ):
-        print(f"{complexity:<30} {count}")
+        print(f"{complexity:<40} {count}")
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
     # Summary by Risk
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     print()
     print("Summary by Risk")
-    print("=" * 60)
-
-    risks: dict[str, int] = {}
-
-    for finding in findings:
-        risks[finding.risk] = (
-            risks.get(
-                finding.risk,
-                0,
-            )
-            + 1
-        )
+    print("=" * 70)
 
     for risk, count in sorted(
         risks.items()
     ):
-        print(f"{risk:<30} {count}")
+        print(f"{risk:<40} {count}")
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
     # Summary by Confidence
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     print()
     print("Summary by Confidence")
-    print("=" * 60)
-
-    confidences: dict[str, int] = {}
-
-    for finding in findings:
-        confidences[finding.confidence] = (
-            confidences.get(
-                finding.confidence,
-                0,
-            )
-            + 1
-        )
+    print("=" * 70)
 
     for confidence, count in sorted(
         confidences.items()
     ):
-        print(f"{confidence:<30} {count}")
+        print(f"{confidence:<40} {count}")
 
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
     # Summary by Automation
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
 
     print()
     print("Summary by Automation Level")
-    print("=" * 60)
-
-    automation_levels: dict[str, int] = {}
-
-    for finding in findings:
-        automation_levels[
-            finding.automation_level
-        ] = (
-            automation_levels.get(
-                finding.automation_level,
-                0,
-            )
-            + 1
-        )
+    print("=" * 70)
 
     for automation_level, count in sorted(
         automation_levels.items()
     ):
-        print(f"{automation_level:<30} {count}")
+        print(f"{automation_level:<40} {count}")
 
-    # --------------------------------------------------------------
-    # Total effort
-    # --------------------------------------------------------------
+    # ----------------------------------------------------------
+    # Built-in categories
+    # ----------------------------------------------------------
+
+    print()
+    print("Summary by Forms Built-in Category")
+    print("=" * 70)
+
+    if builtin_categories:
+        for category, count in sorted(
+            builtin_categories.items()
+        ):
+            print(f"{category:<40} {count}")
+    else:
+        print("No Forms built-ins detected.")
+
+    # ----------------------------------------------------------
+    # Built-in usage
+    # ----------------------------------------------------------
+
+    print()
+    print("Forms Built-in Usage")
+    print("=" * 70)
+
+    if builtin_usage:
+        for builtin_name, count in sorted(
+            builtin_usage.items()
+        ):
+            print(f"{builtin_name:<40} {count}")
+    else:
+        print("No Forms built-ins detected.")
+
+    # ----------------------------------------------------------
+    # APEX migration strategies from built-ins
+    # ----------------------------------------------------------
+
+    print()
+    print("Built-in APEX Strategies")
+    print("=" * 70)
+
+    if builtin_strategies:
+        for strategy, count in sorted(
+            builtin_strategies.items()
+        ):
+            print(f"{strategy:<40} {count}")
+    else:
+        print("No built-in migration strategies detected.")
+
+    # ----------------------------------------------------------
+    # Migration effort
+    # ----------------------------------------------------------
 
     total_effort = sum(
         finding.effort
@@ -201,9 +284,20 @@ def main() -> None:
 
     print()
     print("Estimated Migration Effort")
-    print("=" * 60)
-    print(f"Total effort points : {total_effort}")
-    print(f"Total findings      : {len(findings)}")
+    print("=" * 70)
+
+    print(
+        f"Total effort points : {total_effort}"
+    )
+
+    print(
+        f"Total findings      : {len(findings)}"
+    )
+
+    print(
+        "Built-ins detected  : "
+        f"{sum(builtin_usage.values())}"
+    )
 
     print()
     print("Migration analysis: OK")
