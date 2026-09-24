@@ -283,3 +283,227 @@ def test_form_trigger_mapping():
         "Forms navigation/query"
         in finding.recommendation
     )
+
+def test_behavior_pattern_metadata():
+    findings = get_findings()
+
+    btn_save = next(
+        item
+        for item in findings
+        if (
+            item.object_name == "CONTROL.BTN_SAVE"
+            and item.trigger_name
+            == "WHEN-BUTTON-PRESSED"
+        )
+    )
+
+    submit_behavior = next(
+        behavior
+        for behavior in btn_save.behavior_patterns
+        if behavior.name == "SUBMIT_TRANSACTION"
+    )
+
+    assert (
+        submit_behavior.apex_component
+        == "APEX_PAGE_PROCESS"
+    )
+    assert (
+        submit_behavior.automation_level
+        == "ASSISTED"
+    )
+    assert submit_behavior.confidence == "HIGH"
+
+    form_trigger = next(
+        item
+        for item in findings
+        if (
+            item.trigger_name
+            == "WHEN-NEW-FORM-INSTANCE"
+        )
+    )
+
+    initial_query = next(
+        behavior
+        for behavior in form_trigger.behavior_patterns
+        if behavior.name == "INITIAL_QUERY"
+    )
+
+    assert (
+        initial_query.apex_component
+        == "APEX_REGION_INITIALIZATION"
+    )
+    assert initial_query.confidence == "HIGH"
+
+    validation = next(
+        item
+        for item in findings
+        if (
+            item.object_name == "CUSTOMERS.EMAIL"
+            and item.trigger_name
+            == "WHEN-VALIDATE-ITEM"
+        )
+    )
+
+    validation_behavior = next(
+        behavior
+        for behavior in validation.behavior_patterns
+        if behavior.name == "VALIDATION_FAILURE"
+    )
+
+    assert (
+        validation_behavior.apex_component
+        == "APEX_VALIDATION"
+    )
+
+
+def test_triggers_without_known_behavior_remain_empty():
+    findings = get_findings()
+
+    pre_insert = next(
+        item
+        for item in findings
+        if item.trigger_name == "PRE-INSERT"
+    )
+
+    post_query = next(
+        item
+        for item in findings
+        if item.trigger_name == "POST-QUERY"
+    )
+
+    assert pre_insert.behavior_patterns == ()
+    assert post_query.behavior_patterns == ()
+    
+def test_behavior_patterns_are_attached_to_findings():
+    findings = get_findings()
+
+    validate_email = next(
+        item
+        for item in findings
+        if (
+            item.object_name == "CUSTOMERS.EMAIL"
+            and item.trigger_name
+            == "WHEN-VALIDATE-ITEM"
+        )
+    )
+
+    validate_behaviors = {
+        behavior.name
+        for behavior in validate_email.behavior_patterns
+    }
+
+    assert validate_behaviors == {
+        "VALIDATION_FAILURE"
+    }
+
+    btn_save = next(
+        item
+        for item in findings
+        if (
+            item.object_name == "CONTROL.BTN_SAVE"
+            and item.trigger_name
+            == "WHEN-BUTTON-PRESSED"
+        )
+    )
+
+    save_behaviors = {
+        behavior.name
+        for behavior in btn_save.behavior_patterns
+    }
+
+    assert save_behaviors == {
+        "SUBMIT_TRANSACTION"
+    }
+
+    form_trigger = next(
+        item
+        for item in findings
+        if (
+            item.trigger_name
+            == "WHEN-NEW-FORM-INSTANCE"
+        )
+    )
+
+    form_behaviors = {
+        behavior.name
+        for behavior in form_trigger.behavior_patterns
+    }
+
+    assert form_behaviors == {
+        "INITIAL_QUERY"
+    }
+
+
+def test_behavior_pattern_metadata():
+    findings = get_findings()
+
+    btn_save = next(
+        item
+        for item in findings
+        if (
+            item.object_name == "CONTROL.BTN_SAVE"
+            and item.trigger_name
+            == "WHEN-BUTTON-PRESSED"
+        )
+    )
+
+    submit_behavior = next(
+        behavior
+        for behavior in btn_save.behavior_patterns
+        if behavior.name == "SUBMIT_TRANSACTION"
+    )
+
+    assert (
+        submit_behavior.apex_component
+        == "APEX_PAGE_PROCESS"
+    )
+
+    assert (
+        submit_behavior.automation_level
+        == "ASSISTED"
+    )
+
+    assert submit_behavior.confidence == "HIGH"
+
+    form_trigger = next(
+        item
+        for item in findings
+        if (
+            item.trigger_name
+            == "WHEN-NEW-FORM-INSTANCE"
+        )
+    )
+
+    initial_query = next(
+        behavior
+        for behavior in form_trigger.behavior_patterns
+        if behavior.name == "INITIAL_QUERY"
+    )
+
+    assert (
+        initial_query.apex_component
+        == "APEX_REGION_INITIALIZATION"
+    )
+
+    assert initial_query.confidence == "HIGH"
+
+    validation = next(
+        item
+        for item in findings
+        if (
+            item.object_name == "CUSTOMERS.EMAIL"
+            and item.trigger_name
+            == "WHEN-VALIDATE-ITEM"
+        )
+    )
+
+    validation_behavior = next(
+        behavior
+        for behavior in validation.behavior_patterns
+        if behavior.name == "VALIDATION_FAILURE"
+    )
+
+    assert (
+        validation_behavior.apex_component
+        == "APEX_VALIDATION"
+    )

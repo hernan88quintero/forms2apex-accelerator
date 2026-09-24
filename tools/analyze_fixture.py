@@ -33,8 +33,6 @@ def main() -> None:
     model = parse_form_xml(FIXTURE)
     findings = analyze_form(model)
 
-    # FormModel todavía no almacena el nombre del formulario.
-    # Por ahora lo derivamos del nombre del fixture.
     form_name = FIXTURE.stem.upper()
 
     print()
@@ -83,9 +81,7 @@ def main() -> None:
             print("Built-in Analysis:")
 
             for detail in finding.builtin_details:
-                print(
-                    f"  - {detail.name}"
-                )
+                print(f"  - {detail.name}")
                 print(
                     f"    Category      : {detail.category}"
                 )
@@ -94,6 +90,34 @@ def main() -> None:
                 )
                 print(
                     f"    Risk          : {detail.risk}"
+                )
+
+        # ------------------------------------------------------
+        # Behavior analysis
+        # ------------------------------------------------------
+
+        if finding.behavior_patterns:
+
+            print()
+            print("Behavior Analysis:")
+
+            for behavior in finding.behavior_patterns:
+                print(f"  - {behavior.name}")
+                print(
+                    f"    APEX Component : "
+                    f"{behavior.apex_component}"
+                )
+                print(
+                    f"    Automation     : "
+                    f"{behavior.automation_level}"
+                )
+                print(
+                    f"    Confidence     : "
+                    f"{behavior.confidence}"
+                )
+                print(
+                    f"    Recommendation : "
+                    f"{behavior.recommendation}"
                 )
 
         print()
@@ -115,6 +139,11 @@ def main() -> None:
     builtin_categories: dict[str, int] = {}
     builtin_strategies: dict[str, int] = {}
     builtin_usage: dict[str, int] = {}
+
+    behavior_usage: dict[str, int] = {}
+    behavior_components: dict[str, int] = {}
+    behavior_confidence: dict[str, int] = {}
+    behavior_automation: dict[str, int] = {}
 
     for finding in findings:
 
@@ -158,6 +187,28 @@ def main() -> None:
             increment_counter(
                 builtin_usage,
                 detail.name,
+            )
+
+        for behavior in finding.behavior_patterns:
+
+            increment_counter(
+                behavior_usage,
+                behavior.name,
+            )
+
+            increment_counter(
+                behavior_components,
+                behavior.apex_component,
+            )
+
+            increment_counter(
+                behavior_confidence,
+                behavior.confidence,
+            )
+
+            increment_counter(
+                behavior_automation,
+                behavior.automation_level,
             )
 
     # ----------------------------------------------------------
@@ -258,7 +309,7 @@ def main() -> None:
         print("No Forms built-ins detected.")
 
     # ----------------------------------------------------------
-    # APEX migration strategies from built-ins
+    # Built-in strategies
     # ----------------------------------------------------------
 
     print()
@@ -274,12 +325,80 @@ def main() -> None:
         print("No built-in migration strategies detected.")
 
     # ----------------------------------------------------------
+    # Behavior patterns
+    # ----------------------------------------------------------
+
+    print()
+    print("Behavior Patterns")
+    print("=" * 70)
+
+    if behavior_usage:
+        for behavior_name, count in sorted(
+            behavior_usage.items()
+        ):
+            print(f"{behavior_name:<40} {count}")
+    else:
+        print("No behavior patterns detected.")
+
+    # ----------------------------------------------------------
+    # Target APEX components
+    # ----------------------------------------------------------
+
+    print()
+    print("Target APEX Components")
+    print("=" * 70)
+
+    if behavior_components:
+        for component, count in sorted(
+            behavior_components.items()
+        ):
+            print(f"{component:<40} {count}")
+    else:
+        print("No target APEX components detected.")
+
+    # ----------------------------------------------------------
+    # Behavior confidence
+    # ----------------------------------------------------------
+
+    print()
+    print("Behavior Confidence")
+    print("=" * 70)
+
+    if behavior_confidence:
+        for confidence, count in sorted(
+            behavior_confidence.items()
+        ):
+            print(f"{confidence:<40} {count}")
+    else:
+        print("No behavior confidence information.")
+
+    # ----------------------------------------------------------
+    # Behavior automation
+    # ----------------------------------------------------------
+
+    print()
+    print("Behavior Automation")
+    print("=" * 70)
+
+    if behavior_automation:
+        for automation, count in sorted(
+            behavior_automation.items()
+        ):
+            print(f"{automation:<40} {count}")
+    else:
+        print("No behavior automation information.")
+
+    # ----------------------------------------------------------
     # Migration effort
     # ----------------------------------------------------------
 
     total_effort = sum(
         finding.effort
         for finding in findings
+    )
+
+    total_behaviors = sum(
+        behavior_usage.values()
     )
 
     print()
@@ -297,6 +416,10 @@ def main() -> None:
     print(
         "Built-ins detected  : "
         f"{sum(builtin_usage.values())}"
+    )
+
+    print(
+        f"Behaviors detected  : {total_behaviors}"
     )
 
     print()

@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from f2a.rules.behaviors import BehaviorPattern
+
 
 @dataclass(frozen=True)
 class BuiltinFinding:
@@ -25,4 +27,5 @@ class MigrationFinding:
 
     builtins: tuple[str, ...] = ()
     builtin_details: tuple[BuiltinFinding, ...] = ()
+    behavior_patterns: tuple[BehaviorPattern, ...] = ()
     referenced_program_units: tuple[str, ...] = ()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from f2a.model import FormModel
+from f2a.rules.behaviors import detect_behavior_patterns
 from f2a.rules.builtins import (
     BUILTIN_CATALOG,
     get_builtin_definition,
@@ -308,6 +309,10 @@ def analyze_form(
             builtins
         )
 
+        behavior_patterns = detect_behavior_patterns(
+            builtins
+        )
+
         apex_pattern = _get_apex_pattern(
             scope,
             trigger.name,
@@ -343,6 +348,7 @@ def analyze_form(
             recommendation=recommendation,
             builtins=builtins,
             builtin_details=builtin_details,
+            behavior_patterns=behavior_patterns,
             referenced_program_units=referenced_units,
         )
 
