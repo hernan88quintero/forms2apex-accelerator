@@ -1,7 +1,10 @@
 from pathlib import Path
 
+from f2a.analysis.dependencies import build_dependency_graph
+from f2a.analysis.planner import build_migration_plan
 from f2a.parser.xml_parser import parse_form_xml
 from f2a.rules.analyzer import analyze_form
+
 
 
 FIXTURE = Path(
@@ -34,6 +37,16 @@ def main() -> None:
     findings = analyze_form(model)
 
     form_name = FIXTURE.stem.upper()
+
+    graph = build_dependency_graph(
+        model,
+        form_name=form_name,
+    )
+
+    migration_plan = build_migration_plan(
+        graph,
+        findings,
+    )
 
     print()
     print(f"Form     : {form_name}")
@@ -420,6 +433,100 @@ def main() -> None:
 
     print(
         f"Behaviors detected  : {total_behaviors}"
+    )
+
+    # ----------------------------------------------------------
+    # Dependency Graph
+    # ----------------------------------------------------------
+
+    print()
+    print("Dependency Graph")
+    print("=" * 70)
+
+    print(
+        f"Total nodes : {len(graph.nodes)}"
+    )
+
+    print(
+        f"Total edges : {len(graph.edges)}"
+    )
+
+    print()
+
+    node_types = (
+        "FORM",
+        "BLOCK",
+        "ITEM",
+        "TRIGGER",
+        "PROGRAM_UNIT",
+        "BUILTIN",
+    )
+
+    for node_type in node_types:
+
+        count = len(
+            graph.nodes_by_type(
+                node_type
+            )
+        )
+
+        print(
+            f"{node_type:<20} {count}"
+        )
+
+    # ----------------------------------------------------------
+    # Suggested Migration Plan
+    # ----------------------------------------------------------
+
+    print()
+    print("Suggested Migration Plan")
+    print("=" * 70)
+
+    if not migration_plan:
+
+        print(
+            "No migration plan could be generated."
+        )
+
+    else:
+
+        for step in migration_plan:
+
+            print()
+            print(
+                f"{step.order}. {step.stage}"
+            )
+
+            print(
+                "   APEX Components:"
+            )
+
+            for component in step.apex_components:
+                print(
+                    f"     - {component}"
+                )
+
+            print(
+                "   Source Objects:"
+            )
+
+            for source_object in step.source_objects:
+                print(
+                    f"     - {source_object}"
+                )
+
+            print(
+                "   Reason:"
+            )
+
+            print(
+                f"     {step.reason}"
+            )
+
+    print()
+    print(
+        f"Migration plan steps : "
+        f"{len(migration_plan)}"
     )
 
     print()
