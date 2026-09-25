@@ -16,3 +16,6 @@ markers = [
     "integration: tests that require the local Oracle database",
     "dbwrite: integration tests that modify Oracle data",
 ]
+
+[project.scripts]
+f2a = "f2a.cli:main"
