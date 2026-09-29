@@ -1,3 +1,5 @@
+import xml.etree.ElementTree as ET
+
 from pathlib import Path
 
 from f2a.cli import (
@@ -12,6 +14,123 @@ FIXTURE = Path(
     "samples/golden_001/fixtures/f2a_customers_form.xml"
 )
 
+def _normalize_xml_name(
+    name: str,
+) -> str:
+    local_name = name.split(
+        "}",
+        1,
+    )[-1]
+
+    return "".join(
+        character
+        for character in local_name.lower()
+        if character.isalnum()
+    )
+
+
+def _get_attribute(
+    element: ET.Element,
+    attribute_name: str,
+) -> str | None:
+
+    expected_name = _normalize_xml_name(
+        attribute_name
+    )
+
+    for actual_name, value in element.attrib.items():
+
+        if (
+            _normalize_xml_name(actual_name)
+            == expected_name
+        ):
+            return value
+
+    return None
+
+
+def _set_attribute(
+    element: ET.Element,
+    attribute_name: str,
+    value: str,
+) -> None:
+
+    expected_name = _normalize_xml_name(
+        attribute_name
+    )
+
+    for actual_name in list(
+        element.attrib.keys()
+    ):
+
+        if (
+            _normalize_xml_name(actual_name)
+            == expected_name
+        ):
+            element.attrib[
+                actual_name
+            ] = value
+            return
+
+    element.set(
+        attribute_name,
+        value,
+    )
+
+
+def _create_invalid_lov_form(
+    destination: Path,
+) -> Path:
+
+    tree = ET.parse(
+        FIXTURE
+    )
+
+    root = tree.getroot()
+
+    status_item = None
+
+    for element in root.iter():
+
+        if not isinstance(
+            element.tag,
+            str,
+        ):
+            continue
+
+        if (
+            _normalize_xml_name(element.tag)
+            != "item"
+        ):
+            continue
+
+        name = _get_attribute(
+            element,
+            "Name",
+        )
+
+        if (
+            name is not None
+            and name.upper() == "STATUS"
+        ):
+            status_item = element
+            break
+
+    assert status_item is not None
+
+    _set_attribute(
+        status_item,
+        "LovName",
+        "LOV_DOES_NOT_EXIST",
+    )
+
+    tree.write(
+        destination,
+        encoding="utf-8",
+        xml_declaration=True,
+    )
+
+    return destination
 
 def test_cli_parser_accepts_assessment_command():
     parser = build_parser()
@@ -524,3 +643,160 @@ def test_cli_batch_generates_portfolio(
         output_dir
         / "F2A_PORTFOLIO_SUMMARY.md"
     ).exists()
+
+def test_cli_main_handles_semantic_validation_error(
+    tmp_path,
+):
+    invalid_file = _create_invalid_lov_form(
+        tmp_path / "invalid_semantic.xml"
+    )
+
+    exit_code = main(
+        [
+            "assessment",
+            "--input",
+            str(invalid_file),
+            "--output",
+            str(tmp_path / "output"),
+        ]
+    )
+
+    assert exit_code == 2
+
+
+def test_batch_continues_after_semantic_validation_error(
+    tmp_path,
+):
+    import shutil
+
+    input_dir = tmp_path / "forms"
+    output_dir = tmp_path / "output"
+
+    input_dir.mkdir()
+
+    shutil.copyfile(
+        FIXTURE,
+        input_dir / "valid_form.xml",
+    )
+
+    invalid_file = _create_invalid_lov_form(
+        input_dir / "invalid_form.xml"
+    )
+
+    result = generate_assessment_batch(
+        input_dir=input_dir,
+        output_dir=output_dir,
+    )
+
+    assert result.total_files == 2
+    assert result.success_count == 1
+    assert result.failure_count == 1
+
+    assert (
+        output_dir
+        / "VALID_FORM_assessment.md"
+    ).exists()
+
+    failed_path, error = result.failures[0]
+
+    assert failed_path == invalid_file
+
+    assert (
+        "references unknown LOV"
+        in error
+    )
+
+
+def test_cli_batch_returns_partial_failure_status(
+    tmp_path,
+):
+    import shutil
+
+    input_dir = tmp_path / "forms"
+    output_dir = tmp_path / "output"
+
+    input_dir.mkdir()
+
+    shutil.copyfile(
+        FIXTURE,
+        input_dir / "valid_form.xml",
+    )
+
+    _create_invalid_lov_form(
+        input_dir / "invalid_form.xml"
+    )
+
+    exit_code = main(
+        [
+            "assessment-batch",
+            "--input-dir",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 1
+
+
+def test_partial_batch_portfolio_reports_failed_form(
+    tmp_path,
+):
+    import shutil
+
+    input_dir = tmp_path / "forms"
+    output_dir = tmp_path / "output"
+
+    input_dir.mkdir()
+
+    shutil.copyfile(
+        FIXTURE,
+        input_dir / "valid_form.xml",
+    )
+
+    _create_invalid_lov_form(
+        input_dir / "invalid_form.xml"
+    )
+
+    exit_code = main(
+        [
+            "assessment-batch",
+            "--input-dir",
+            str(input_dir),
+            "--output",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 1
+
+    portfolio_path = (
+        output_dir
+        / "F2A_PORTFOLIO_SUMMARY.md"
+    )
+
+    assert portfolio_path.exists()
+
+    report = portfolio_path.read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        "| XML Files Discovered | 2 |"
+        in report
+    )
+
+    assert (
+        "| Forms Assessed | 1 |"
+        in report
+    )
+
+    assert (
+        "| Forms Failed | 1 |"
+        in report
+    )
+
+    assert (
+        "completed with processing errors"
+        in report
+    )

@@ -31,6 +31,17 @@ class Block:
     items: list[Item] = field(default_factory=list)
     triggers: list[Trigger] = field(default_factory=list)
 
+@dataclass
+class BlockRelation:
+    name: str
+
+    master_block: str
+    detail_block: str
+
+    master_item: str | None = None
+    detail_item: str | None = None
+
+    relation_type: str = "MASTER_DETAIL"
 
 @dataclass
 class ProgramUnit:
@@ -59,8 +70,8 @@ class FormModel:
     form_triggers: list[Trigger] = field(default_factory=list)
     program_units: list[ProgramUnit] = field(default_factory=list)
     lovs: list[Lov] = field(default_factory=list)
-
     expected_results: dict[str, int] = field(default_factory=dict)
+    relations: list[BlockRelation] = field(default_factory=list)
 
     @property
     def item_count(self) -> int:
