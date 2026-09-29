@@ -9,6 +9,10 @@ from f2a.analysis.dependencies import (
 from f2a.analysis.planner import (
     build_migration_plan,
 )
+from f2a.analysis.relations import (
+    RelationMigrationAdvice,
+    analyze_relations,
+)
 from f2a.model import FormModel
 from f2a.rules.analyzer import analyze_form
 
@@ -22,6 +26,8 @@ class AssessmentSummary:
     trigger_count: int
     program_unit_count: int
     lov_count: int
+    relation_count: int
+    master_detail_relation_count: int
 
     finding_count: int
     builtin_count: int
@@ -193,6 +199,15 @@ def build_assessment_summary(
             model.program_units
         ),
         lov_count=len(model.lovs),
+        relation_count=len(model.relations),
+        master_detail_relation_count=sum(
+            1 for relation in model.relations if 
+            (relation.relation_type
+                    .strip()
+                    .upper()
+                    == "MASTER_DETAIL"
+                )
+        ),
         finding_count=len(findings),
         builtin_count=builtin_count,
         behavior_count=behavior_count,
@@ -431,6 +446,125 @@ def _display_plan_source_object(
 
     return source_object
 
+def _format_relation_endpoint(
+    block_name: str,
+    item_name: str | None,
+) -> str:
+
+    if item_name:
+        return (
+            f"{block_name}."
+            f"{item_name}"
+        )
+
+    return block_name
+
+
+def _render_relations_section(
+    relations: tuple[
+        RelationMigrationAdvice,
+        ...
+    ],
+) -> list[str]:
+
+    lines: list[str] = [
+        "## Master / Detail Relationships",
+        "",
+    ]
+
+    if not relations:
+
+        lines.extend(
+            [
+                (
+                    "No explicit master/detail "
+                    "relationships were detected."
+                ),
+                "",
+            ]
+        )
+
+        return lines
+
+    for relation in relations:
+
+        master_source = (
+            _format_relation_endpoint(
+                relation.master_block,
+                relation.master_item,
+            )
+        )
+
+        detail_source = (
+            _format_relation_endpoint(
+                relation.detail_block,
+                relation.detail_item,
+            )
+        )
+
+        lines.extend(
+            [
+                f"### {relation.relation_name}",
+                "",
+                "**Source Relationship:**",
+                "",
+                "| Role | Forms Object |",
+                "|---|---|",
+                (
+                    f"| Master | "
+                    f"`{master_source}` |"
+                ),
+                (
+                    f"| Detail | "
+                    f"`{detail_source}` |"
+                ),
+                "",
+                "**Suggested APEX Architecture:**",
+                "",
+                "| Property | Recommendation |",
+                "|---|---|",
+                (
+                    f"| Relation Type | "
+                    f"`{relation.relation_type}` |"
+                ),
+                (
+                    f"| Pattern | "
+                    f"`{relation.apex_pattern}` |"
+                ),
+                (
+                    f"| Master Component | "
+                    f"`{relation.master_component}` |"
+                ),
+                (
+                    f"| Detail Component | "
+                    f"`{relation.detail_component}` |"
+                ),
+                (
+                    f"| Synchronization | "
+                    f"`{relation.synchronization}` |"
+                ),
+                (
+                    f"| Automation | "
+                    f"{relation.automation_level} |"
+                ),
+                (
+                    f"| Complexity | "
+                    f"{relation.complexity} |"
+                ),
+                (
+                    f"| Risk | "
+                    f"{relation.risk} |"
+                ),
+                "",
+                "**Rationale:**",
+                "",
+                relation.rationale,
+                "",
+            ]
+        )
+
+    return lines
+
 def _render_migration_plan_section(
     migration_plan,
     *,
@@ -591,6 +725,10 @@ def render_assessment_markdown(
         findings,
     )
 
+    relation_advice = analyze_relations(
+        model
+    )
+
     lines: list[str] = [
         f"# Forms2APEX Migration Assessment — "
         f"{summary.form_name}",
@@ -605,7 +743,9 @@ def render_assessment_markdown(
             f"{summary.item_count} items, "
             f"{summary.trigger_count} triggers, "
             f"{summary.program_unit_count} program units, "
-            f"and {summary.lov_count} LOVs."
+            f"{summary.lov_count} LOVs, "
+            f"and {summary.relation_count} "
+            f"explicit block relationships."
         ),
         "",
         (
@@ -627,6 +767,10 @@ def render_assessment_markdown(
             f"{summary.program_unit_count} |"
         ),
         f"| LOVs | {summary.lov_count} |",
+        (
+            f"| Relationships | "
+            f"{summary.relation_count} |"
+        ),
         "",
     ]
 
@@ -700,6 +844,12 @@ def render_assessment_markdown(
         _render_migration_plan_section(
             migration_plan,
             form_name=summary.form_name,
+        )
+    )
+
+    lines.extend(
+        _render_relations_section(
+            relation_advice
         )
     )
 

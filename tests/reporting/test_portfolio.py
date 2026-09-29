@@ -15,6 +15,34 @@ FIXTURE = Path(
     "samples/golden_001/fixtures/f2a_customers_form.xml"
 )
 
+GOLDEN_002 = Path(
+    "samples/golden_002/fixtures/f2a_orders_form.xml"
+)
+
+def get_relation_summaries():
+
+    customers_model = parse_form_xml(
+        FIXTURE
+    )
+
+    orders_model = parse_form_xml(
+        GOLDEN_002
+    )
+
+    customers = build_assessment_summary(
+        customers_model,
+        form_name="F2A_CUSTOMERS_FORM",
+    )
+
+    orders = build_assessment_summary(
+        orders_model,
+        form_name="F2A_ORDERS_FORM",
+    )
+
+    return (
+        customers,
+        orders,
+    )
 
 def get_summaries():
     model = parse_form_xml(
@@ -159,4 +187,131 @@ def test_portfolio_markdown_contains_waves():
     assert (
         "| ORDERS | WAVE_3 |"
         in report
+    )
+
+def test_portfolio_relationship_totals():
+    portfolio = build_portfolio_summary(
+        get_relation_summaries(),
+        total_files=2,
+        failed_forms=0,
+    )
+
+    assert (
+        portfolio.forms_with_relationships
+        == 1
+    )
+
+    assert (
+        portfolio.master_detail_forms
+        == 1
+    )
+
+    assert (
+        portfolio.total_relationships
+        == 1
+    )
+
+
+def test_portfolio_markdown_contains_relationship_metrics():
+    portfolio = build_portfolio_summary(
+        get_relation_summaries(),
+        total_files=2,
+        failed_forms=0,
+    )
+
+    report = render_portfolio_markdown(
+        portfolio
+    )
+
+    assert (
+        "| Forms with Relationships | 1 |"
+        in report
+    )
+
+    assert (
+        "| Master/Detail Forms | 1 |"
+        in report
+    )
+
+    assert (
+        "| Total Relationships | 1 |"
+        in report
+    )
+
+
+def test_portfolio_forms_table_contains_relation_counts():
+    portfolio = build_portfolio_summary(
+        get_relation_summaries(),
+        total_files=2,
+        failed_forms=0,
+    )
+
+    report = render_portfolio_markdown(
+        portfolio
+    )
+
+    lines = report.splitlines()
+
+    customers_row = next(
+        line
+        for line in lines
+        if line.startswith(
+            "| F2A_CUSTOMERS_FORM "
+        )
+    )
+
+    orders_row = next(
+        line
+        for line in lines
+        if line.startswith(
+            "| F2A_ORDERS_FORM "
+        )
+    )
+
+    customers_cells = [
+        cell.strip()
+        for cell in customers_row
+        .strip("|")
+        .split("|")
+    ]
+
+    orders_cells = [
+        cell.strip()
+        for cell in orders_row
+        .strip("|")
+        .split("|")
+    ]
+
+    # Column 4 = Relationships
+    assert customers_cells[4] == "0"
+    assert orders_cells[4] == "1"
+
+
+def test_portfolio_forms_are_rendered_before_waves():
+    portfolio = build_portfolio_summary(
+        get_relation_summaries(),
+        total_files=2,
+        failed_forms=0,
+    )
+
+    report = render_portfolio_markdown(
+        portfolio
+    )
+
+    forms_position = report.index(
+        "## Forms"
+    )
+
+    customers_position = report.index(
+        "| F2A_CUSTOMERS_FORM "
+    )
+
+    waves_position = report.index(
+        "## Suggested Migration Waves"
+    )
+
+    assert (
+        forms_position
+        < customers_position
+        < waves_position
     )

@@ -19,6 +19,10 @@ class PortfolioSummary:
     total_behaviors: int
     total_effort: int
 
+    forms_with_relationships: int
+    master_detail_forms: int
+    total_relationships: int
+
     complexity_summary: tuple[
         tuple[str, int], ...
     ]
@@ -131,6 +135,25 @@ def build_portfolio_summary(
             summary.total_effort
             for summary in forms
         ),
+        forms_with_relationships=sum(
+            1
+            for summary in forms
+            if summary.relation_count > 0
+        ),
+
+        master_detail_forms=sum(
+            1
+            for summary in forms
+            if (
+                summary.master_detail_relation_count
+                > 0
+            )
+        ),
+
+        total_relationships=sum(
+            summary.relation_count
+            for summary in forms
+        ),
         complexity_summary=_counter_as_tuple(
             complexity_counter
         ),
@@ -198,6 +221,18 @@ def render_portfolio_markdown(
             f"{portfolio.failed_forms} |"
         ),
         (
+            f"| Forms with Relationships | "
+            f"{portfolio.forms_with_relationships} |"
+        ),
+        (
+            f"| Master/Detail Forms | "
+            f"{portfolio.master_detail_forms} |"
+        ),
+        (
+            f"| Total Relationships | "
+            f"{portfolio.total_relationships} |"
+        ),
+        (
             f"| Migration Findings | "
             f"{portfolio.total_findings} |"
         ),
@@ -243,11 +278,28 @@ def render_portfolio_markdown(
             "",
             (
                 "| Form | Complexity | Risk | "
-                "Classification | Findings | Effort |"
+                "Classification | Relationships | "
+                "Findings | Effort |"
             ),
-            "|---|---|---|---|---:|---:|",
+            (
+                "|---|---|---|---|---:|---:|---:|"
+            ),
         ]
     )
+
+    for summary in portfolio.forms:
+
+        lines.append(
+            (
+                f"| {summary.form_name} "
+                f"| {summary.overall_complexity} "
+                f"| {summary.overall_risk} "
+                f"| {summary.assessment_classification} "
+                f"| {summary.relation_count} "
+                f"| {summary.finding_count} "
+                f"| {summary.total_effort} |"
+            )
+        )
 
     lines.extend(
         [
@@ -264,27 +316,6 @@ def render_portfolio_markdown(
         lines.append(
             f"| {form_name} | {wave} |"
         )
-
-    for summary in portfolio.forms:
-
-        lines.append(
-            (
-                f"| {summary.form_name} "
-                f"| {summary.overall_complexity} "
-                f"| {summary.overall_risk} "
-                f"| {summary.assessment_classification} "
-                f"| {summary.finding_count} "
-                f"| {summary.total_effort} |"
-            )
-        )
-
-    lines.extend(
-        [
-            "",
-            "## Portfolio Status",
-            "",
-        ]
-    )
 
     if portfolio.failed_forms:
         lines.append(
