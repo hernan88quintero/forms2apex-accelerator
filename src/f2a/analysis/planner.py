@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from f2a.analysis.dependencies import DependencyGraph
+from f2a.analysis.relations import RelationMigrationAdvice
 from f2a.rules.model import MigrationFinding
 
 
@@ -37,6 +38,10 @@ def _unique_sorted(
 def build_migration_plan(
     graph: DependencyGraph,
     findings: list[MigrationFinding],
+    relations: tuple[
+        RelationMigrationAdvice,
+        ...
+    ] = (),
 ) -> tuple[MigrationPlanStep, ...]:
 
     steps: list[
@@ -106,9 +111,67 @@ def build_migration_plan(
                 ),
             )
         )
+    # ----------------------------------------------------------
+    # 3. Master / Detail structure
+    # ----------------------------------------------------------
+
+    master_detail_relations = [
+        relation
+        for relation in relations
+        if (
+            relation.apex_pattern
+            == "APEX_MASTER_DETAIL"
+        )
+    ]
+
+    if master_detail_relations:
+
+        relation_sources = _unique_sorted(
+            [
+                *(
+                    f"RELATION:"
+                    f"{relation.relation_name}"
+                    for relation
+                    in master_detail_relations
+                ),
+                *(
+                    f"BLOCK:"
+                    f"{relation.master_block}"
+                    for relation
+                    in master_detail_relations
+                ),
+                *(
+                    f"BLOCK:"
+                    f"{relation.detail_block}"
+                    for relation
+                    in master_detail_relations
+                ),
+            ]
+        )
+
+        steps.append(
+            (
+                25,
+                "MASTER_DETAIL_STRUCTURE",
+                (
+                    "APEX_MASTER_DETAIL",
+                    "APEX_FORM_OR_MASTER_REGION",
+                    "APEX_INTERACTIVE_GRID",
+                ),
+                relation_sources,
+                (
+                    "Create the APEX master/detail "
+                    "structure after the base page "
+                    "regions and items exist, and "
+                    "before dependent validation, "
+                    "query, transaction, and refresh "
+                    "logic is migrated."
+                ),
+            )
+        )
 
     # ----------------------------------------------------------
-    # 3. Query enrichment
+    # 4. Query enrichment
     # ----------------------------------------------------------
 
     query_findings = [
@@ -142,7 +205,7 @@ def build_migration_plan(
         )
 
     # ----------------------------------------------------------
-    # 4. Validations
+    # 5. Validations
     # ----------------------------------------------------------
 
     validation_findings = [
@@ -181,7 +244,7 @@ def build_migration_plan(
         )
 
     # ----------------------------------------------------------
-    # 5. DML and page processes
+    # 6. DML and page processes
     # ----------------------------------------------------------
 
     process_findings = [
@@ -224,7 +287,7 @@ def build_migration_plan(
         )
 
     # ----------------------------------------------------------
-    # 6. Page / Region initialization
+    # 7. Page / Region initialization
     # ----------------------------------------------------------
 
     initialization_findings = [
@@ -264,7 +327,7 @@ def build_migration_plan(
         )
 
     # ----------------------------------------------------------
-    # 7. Dynamic Actions
+    # 8. Dynamic Actions
     # ----------------------------------------------------------
 
     dynamic_action_findings = [
@@ -299,7 +362,7 @@ def build_migration_plan(
         )
 
     # ----------------------------------------------------------
-    # 8. Navigation
+    # 9. Navigation
     # ----------------------------------------------------------
 
     navigation_findings = [

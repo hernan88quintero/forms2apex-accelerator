@@ -121,9 +121,14 @@ def build_assessment_summary(
         form_name=form_name,
     )
 
+    relation_advice = analyze_relations(
+    model
+    )
+
     migration_plan = build_migration_plan(
         graph,
         findings,
+        relation_advice,
     )
 
     complexity_counter = Counter(
@@ -720,9 +725,14 @@ def render_assessment_markdown(
         form_name=form_name,
     )
 
+    relation_advice = analyze_relations(
+    model
+    )
+
     migration_plan = build_migration_plan(
         graph,
         findings,
+        relation_advice,
     )
 
     relation_advice = analyze_relations(

@@ -4,6 +4,7 @@ from f2a.parser.xml_parser import (
     parse_form_xml,
 )
 from f2a.reporting.assessment import (
+    build_assessment_summary,
     render_assessment_markdown,
 )
 
@@ -165,5 +166,61 @@ def test_form_without_relations_reports_zero_inventory():
 
     assert (
         "| Relationships | 0 |"
+        in report
+    )
+def test_master_detail_is_in_summary_migration_plan():
+    model = parse_form_xml(
+        GOLDEN_002
+    )
+
+    summary = build_assessment_summary(
+        model,
+        form_name="F2A_ORDERS_FORM",
+    )
+
+    assert (
+        "MASTER_DETAIL_STRUCTURE"
+        in summary.migration_stages
+    )
+
+
+def test_master_detail_is_rendered_in_migration_plan():
+    report = _render(
+        GOLDEN_002,
+        "F2A_ORDERS_FORM",
+    )
+
+    assert (
+        "MASTER_DETAIL_STRUCTURE"
+        in report
+    )
+
+    assert (
+        "`APEX_MASTER_DETAIL`"
+        in report
+    )
+
+    assert (
+        "`APEX_FORM_OR_MASTER_REGION`"
+        in report
+    )
+
+    assert (
+        "`APEX_INTERACTIVE_GRID`"
+        in report
+    )
+
+    assert (
+        "`RELATION:ORDERS_ORDER_LINES`"
+        in report
+    )
+
+    assert (
+        "`BLOCK:ORDERS`"
+        in report
+    )
+
+    assert (
+        "`BLOCK:ORDER_LINES`"
         in report
     )
