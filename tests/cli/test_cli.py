@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import json
 
 from pathlib import Path
 
@@ -6,6 +7,7 @@ from f2a.cli import (
     build_parser,
     generate_assessment_batch,
     generate_assessment_command,
+    generate_blueprint_command,
     main,
 )
 
@@ -13,6 +15,123 @@ from f2a.cli import (
 FIXTURE = Path(
     "samples/golden_001/fixtures/f2a_customers_form.xml"
 )
+GOLDEN_002 = Path(
+    "samples/golden_002/fixtures/f2a_orders_form.xml"
+)
+
+def test_cli_parser_accepts_blueprint_command():
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "blueprint",
+            "--input",
+            str(GOLDEN_002),
+        ]
+    )
+
+    assert args.command == "blueprint"
+    assert args.input == GOLDEN_002
+    assert args.output == Path("output")
+    assert args.form_name is None
+
+
+def test_cli_generates_blueprint(
+    tmp_path,
+):
+    output_path = generate_blueprint_command(
+        input_path=GOLDEN_002,
+        output_dir=tmp_path,
+    )
+
+    assert output_path.exists()
+
+    assert (
+        output_path.name
+        == "F2A_ORDERS_FORM_blueprint.json"
+    )
+
+    content = output_path.read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        '"form_name": "F2A_ORDERS_FORM"'
+        in content
+    )
+
+    assert (
+        '"MASTER_DETAIL_STRUCTURE"'
+        in content
+    )
+
+    assert (
+        '"APEX_MASTER_DETAIL"'
+        in content
+    )
+
+
+def test_cli_blueprint_supports_custom_form_name(
+    tmp_path,
+):
+    output_path = generate_blueprint_command(
+        input_path=GOLDEN_002,
+        output_dir=tmp_path,
+        form_name="orders_maintenance",
+    )
+
+    assert (
+        output_path.name
+        == "ORDERS_MAINTENANCE_blueprint.json"
+    )
+
+
+def test_cli_blueprint_rejects_missing_input(
+    tmp_path,
+):
+    missing_file = (
+        tmp_path
+        / "missing.xml"
+    )
+
+    try:
+        generate_blueprint_command(
+            input_path=missing_file,
+            output_dir=tmp_path,
+        )
+
+    except FileNotFoundError as exc:
+
+        assert (
+            "Input file does not exist"
+            in str(exc)
+        )
+
+    else:
+        raise AssertionError(
+            "Expected FileNotFoundError"
+        )
+
+
+def test_cli_blueprint_main_returns_zero(
+    tmp_path,
+):
+    exit_code = main(
+        [
+            "blueprint",
+            "--input",
+            str(GOLDEN_002),
+            "--output",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+
+    assert (
+        tmp_path
+        / "F2A_ORDERS_FORM_blueprint.json"
+    ).exists()
 
 def _normalize_xml_name(
     name: str,
@@ -799,4 +918,52 @@ def test_partial_batch_portfolio_reports_failed_form(
     assert (
         "completed with processing errors"
         in report
+    )
+
+def test_cli_blueprint_contains_structural_pages(
+    tmp_path,
+):
+    output_path = generate_blueprint_command(
+        input_path=GOLDEN_002,
+        output_dir=tmp_path,
+    )
+
+    content = json.loads(
+        output_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert len(content["pages"]) == 1
+
+    page = content["pages"][0]
+
+    assert (
+        page["page_type"]
+        == "APEX_MASTER_DETAIL_PAGE"
+    )
+
+    regions = {
+        region["source_block"]: region
+        for region in page["regions"]
+    }
+
+    assert (
+        regions["ORDERS"]["relation_role"]
+        == "MASTER"
+    )
+
+    assert (
+        regions["ORDER_LINES"]["relation_role"]
+        == "DETAIL"
+    )
+
+    assert (
+        regions["ORDERS"]["component"]
+        == "APEX_FORM_OR_MASTER_REGION"
+    )
+
+    assert (
+        regions["ORDER_LINES"]["component"]
+        == "APEX_INTERACTIVE_GRID"
     )

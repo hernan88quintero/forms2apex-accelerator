@@ -24,6 +24,21 @@ from f2a.reporting.portfolio import (
     generate_portfolio_file,
 )
 
+from f2a.analysis.dependencies import (
+    build_dependency_graph,
+)
+from f2a.analysis.planner import (
+    build_migration_plan,
+)
+from f2a.analysis.relations import (
+    analyze_relations,
+)
+from f2a.generation.blueprint import (
+    build_apex_blueprint,
+    generate_apex_blueprint_file,
+)
+from f2a.rules.analyzer import analyze_form
+
 PACKAGE_NAME = "forms2apex-accelerator"
 
 
@@ -125,6 +140,47 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ----------------------------------------------------------
+    # blueprint
+    # ----------------------------------------------------------
+
+    blueprint_parser = subparsers.add_parser(
+        "blueprint",
+        help=(
+            "Generate an APEX migration blueprint "
+            "from a Forms XML file."
+        ),
+    )
+
+    blueprint_parser.add_argument(
+        "--input",
+        "-i",
+        required=True,
+        type=Path,
+        help="Path to the Oracle Forms XML file.",
+    )
+
+    blueprint_parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=Path("output"),
+        help=(
+            "Directory where the blueprint will "
+            "be generated. Default: output"
+        ),
+    )
+
+    blueprint_parser.add_argument(
+        "--form-name",
+        type=str,
+        default=None,
+        help=(
+            "Optional form name override. "
+            "By default the XML filename is used."
+        ),
+    )
+
+    # ----------------------------------------------------------
     # assessment-batch
     # ----------------------------------------------------------
 
@@ -182,6 +238,25 @@ def _validate_input_file(
 
     return input_path
 
+def _resolve_form_name(
+    input_path: Path,
+    form_name: str | None,
+) -> str:
+
+    if form_name is None:
+        return input_path.stem.upper()
+
+    resolved_form_name = (
+        form_name.strip().upper()
+    )
+
+    if not resolved_form_name:
+        raise ValueError(
+            "Form name cannot be empty."
+        )
+
+    return resolved_form_name
+
 
 def generate_assessment_command(
     *,
@@ -204,16 +279,12 @@ def generate_assessment_command(
             f"XML parsing failed: {exc}"
         ) from exc
 
-    if form_name is None:
-        resolved_form_name = (
-            input_path.stem.upper()
-        )
-    else:
-        resolved_form_name = (
-            form_name.strip().upper()
-        )
+    resolved_form_name = _resolve_form_name(
+        input_path,
+        form_name,
+    )
 
-        if not resolved_form_name:
+    if not resolved_form_name:
             raise ValueError(
                 "Form name cannot be empty."
             )
@@ -221,6 +292,69 @@ def generate_assessment_command(
     return generate_assessment_file(
         model,
         form_name=resolved_form_name,
+        output_dir=output_dir,
+    )
+
+def generate_blueprint_command(
+    *,
+    input_path: Path,
+    output_dir: Path,
+    form_name: str | None = None,
+) -> Path:
+
+    input_path = _validate_input_file(
+        input_path
+    )
+
+    try:
+        model = parse_form_xml(
+            input_path
+        )
+
+    except ET.ParseError as exc:
+
+        raise ValueError(
+            f"Invalid XML file: {input_path}. "
+            f"XML parsing failed: {exc}"
+        ) from exc
+
+    resolved_form_name = _resolve_form_name(
+        input_path,
+        form_name,
+    )
+
+    summary = build_assessment_summary(
+        model,
+        form_name=resolved_form_name,
+    )
+
+    graph = build_dependency_graph(
+        model,
+        form_name=resolved_form_name,
+    )
+
+    findings = analyze_form(
+        model
+    )
+
+    relations = analyze_relations(
+        model
+    )
+
+    migration_plan = build_migration_plan(
+        graph,
+        findings,
+        relations,
+    )
+
+    blueprint = build_apex_blueprint(
+        summary,
+        migration_plan,
+        model=model,
+    )
+
+    return generate_apex_blueprint_file(
+        blueprint,
         output_dir=output_dir,
     )
 
@@ -361,6 +495,38 @@ def main(
             print()
             print(
                 "Assessment generation: OK"
+            )
+
+            return 0
+
+        if args.command == "blueprint":
+
+            print()
+            print(
+                "Forms2APEX Accelerator - "
+                "APEX Migration Blueprint"
+            )
+            print("=" * 60)
+
+            print(
+                f"Input  : {args.input}"
+            )
+
+            output_path = (
+                generate_blueprint_command(
+                    input_path=args.input,
+                    output_dir=args.output,
+                    form_name=args.form_name,
+                )
+            )
+
+            print(
+                f"Output : {output_path}"
+            )
+
+            print()
+            print(
+                "Blueprint generation: OK"
             )
 
             return 0
