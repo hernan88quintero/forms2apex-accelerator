@@ -5,6 +5,7 @@ from pathlib import Path
 
 from f2a.cli import (
     build_parser,
+    generate_artifact_command,
     generate_assessment_batch,
     generate_assessment_command,
     generate_blueprint_command,
@@ -967,3 +968,98 @@ def test_cli_blueprint_contains_structural_pages(
         regions["ORDER_LINES"]["component"]
         == "APEX_INTERACTIVE_GRID"
     )
+
+def test_cli_parser_accepts_generate_command():
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "generate",
+            "--input",
+            str(GOLDEN_002),
+        ]
+    )
+
+    assert args.command == "generate"
+    assert args.input == GOLDEN_002
+    assert args.output == Path("output")
+    assert args.form_name is None
+
+
+def test_cli_generate_creates_artifact_bundle(
+    tmp_path,
+):
+    result = generate_artifact_command(
+        input_path=GOLDEN_002,
+        output_dir=tmp_path,
+    )
+
+    assert result.root_dir.exists()
+    assert result.manifest_path.exists()
+
+    assert (
+        result.root_dir.name
+        == "F2A_ORDERS_FORM_apex"
+    )
+
+    assert (
+        result.root_dir
+        / "migration_plan.json"
+    ).exists()
+
+    assert (
+        result.root_dir
+        / "relationships.json"
+    ).exists()
+
+
+def test_cli_generate_creates_page_artifact(
+    tmp_path,
+):
+    result = generate_artifact_command(
+        input_path=GOLDEN_002,
+        output_dir=tmp_path,
+    )
+
+    assert (
+        result.root_dir
+        / "pages"
+        / "F2A_ORDERS_FORM.json"
+    ).exists()
+
+
+def test_cli_generate_supports_custom_form_name(
+    tmp_path,
+):
+    result = generate_artifact_command(
+        input_path=GOLDEN_002,
+        output_dir=tmp_path,
+        form_name="orders_maintenance",
+    )
+
+    assert (
+        result.root_dir.name
+        == "ORDERS_MAINTENANCE_apex"
+    )
+
+
+def test_cli_generate_main_returns_zero(
+    tmp_path,
+):
+    exit_code = main(
+        [
+            "generate",
+            "--input",
+            str(GOLDEN_002),
+            "--output",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+
+    assert (
+        tmp_path
+        / "F2A_ORDERS_FORM_apex"
+        / "manifest.json"
+    ).exists()

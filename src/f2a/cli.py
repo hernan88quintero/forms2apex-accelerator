@@ -39,6 +39,17 @@ from f2a.generation.blueprint import (
 )
 from f2a.rules.analyzer import analyze_form
 
+from f2a.generation.artifacts import (
+    GeneratedArtifactBundle,
+    generate_apex_artifact_bundle,
+)
+
+from f2a.generation.blueprint import (
+    ApexMigrationBlueprint,
+    build_apex_blueprint,
+    generate_apex_blueprint_file,
+)
+
 PACKAGE_NAME = "forms2apex-accelerator"
 
 
@@ -181,6 +192,47 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ----------------------------------------------------------
+    # generate
+    # ----------------------------------------------------------
+
+    generate_parser = subparsers.add_parser(
+        "generate",
+        help=(
+            "Generate an APEX migration artifact bundle "
+            "from a Forms XML file."
+        ),
+    )
+
+    generate_parser.add_argument(
+        "--input",
+        "-i",
+        required=True,
+        type=Path,
+        help="Path to the Oracle Forms XML file.",
+    )
+
+    generate_parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=Path("output"),
+        help=(
+            "Directory where the APEX artifact bundle "
+            "will be generated. Default: output"
+        ),
+    )
+
+    generate_parser.add_argument(
+        "--form-name",
+        type=str,
+        default=None,
+        help=(
+            "Optional form name override. "
+            "By default the XML filename is used."
+        ),
+    )
+
+    # ----------------------------------------------------------
     # assessment-batch
     # ----------------------------------------------------------
 
@@ -295,12 +347,11 @@ def generate_assessment_command(
         output_dir=output_dir,
     )
 
-def generate_blueprint_command(
+def _build_blueprint_from_input(
     *,
     input_path: Path,
-    output_dir: Path,
     form_name: str | None = None,
-) -> Path:
+) -> ApexMigrationBlueprint:
 
     input_path = _validate_input_file(
         input_path
@@ -312,7 +363,6 @@ def generate_blueprint_command(
         )
 
     except ET.ParseError as exc:
-
         raise ValueError(
             f"Invalid XML file: {input_path}. "
             f"XML parsing failed: {exc}"
@@ -347,13 +397,42 @@ def generate_blueprint_command(
         relations,
     )
 
-    blueprint = build_apex_blueprint(
+    return build_apex_blueprint(
         summary,
         migration_plan,
         model=model,
     )
 
+def generate_blueprint_command(
+    *,
+    input_path: Path,
+    output_dir: Path,
+    form_name: str | None = None,
+) -> Path:
+
+    blueprint = _build_blueprint_from_input(
+        input_path=input_path,
+        form_name=form_name,
+    )
+
     return generate_apex_blueprint_file(
+        blueprint,
+        output_dir=output_dir,
+    )
+
+def generate_artifact_command(
+    *,
+    input_path: Path,
+    output_dir: Path,
+    form_name: str | None = None,
+) -> GeneratedArtifactBundle:
+
+    blueprint = _build_blueprint_from_input(
+        input_path=input_path,
+        form_name=form_name,
+    )
+
+    return generate_apex_artifact_bundle(
         blueprint,
         output_dir=output_dir,
     )
@@ -527,6 +606,40 @@ def main(
             print()
             print(
                 "Blueprint generation: OK"
+            )
+
+            return 0
+    
+        if args.command == "generate":
+
+            print()
+            print(
+                "Forms2APEX Accelerator - "
+                "APEX Artifact Generator"
+            )
+            print("=" * 60)
+
+            print(
+                f"Input  : {args.input}"
+            )
+
+            result = generate_artifact_command(
+                input_path=args.input,
+                output_dir=args.output,
+                form_name=args.form_name,
+            )
+
+            print(
+                f"Bundle : {result.root_dir}"
+            )
+
+            print(
+                f"Manifest: {result.manifest_path}"
+            )
+
+            print()
+            print(
+                "APEX artifact generation: OK"
             )
 
             return 0
