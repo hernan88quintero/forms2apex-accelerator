@@ -284,3 +284,40 @@ def test_artifact_bundle_contains_sql_scaffold(
         "sql/F2A_ORDERS_FORM_scaffold.sql"
         in manifest["generated_files"]
     )
+
+def test_artifact_manifest_contains_target_apex_version(
+    tmp_path,
+):
+    blueprint = _build_blueprint(
+        GOLDEN_002,
+        "F2A_ORDERS_FORM",
+    )
+
+    result = generate_apex_artifact_bundle(
+        blueprint,
+        output_dir=tmp_path,
+        apex_version="24.2",
+    )
+
+    manifest = json.loads(
+        result.manifest_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert (
+        result.target_apex_version
+        == "24.2"
+    )
+
+    assert (
+        manifest["target_apex_version"]
+        == "24.2"
+    )
+
+    assert (
+        manifest[
+            "apex_readable_export_format"
+        ]
+        == "YAML"
+    )

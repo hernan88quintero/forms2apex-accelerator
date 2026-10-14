@@ -1,4 +1,7 @@
 from __future__ import annotations
+from f2a.generation.apex_adapter import (
+    DEFAULT_APEX_VERSION,
+)
 
 import argparse
 import xml.etree.ElementTree as ET
@@ -32,10 +35,6 @@ from f2a.analysis.planner import (
 )
 from f2a.analysis.relations import (
     analyze_relations,
-)
-from f2a.generation.blueprint import (
-    build_apex_blueprint,
-    generate_apex_blueprint_file,
 )
 from f2a.rules.analyzer import analyze_form
 
@@ -195,6 +194,10 @@ def build_parser() -> argparse.ArgumentParser:
     # generate
     # ----------------------------------------------------------
 
+    # ----------------------------------------------------------
+    # generate
+    # ----------------------------------------------------------
+
     generate_parser = subparsers.add_parser(
         "generate",
         help=(
@@ -229,6 +232,16 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Optional form name override. "
             "By default the XML filename is used."
+        ),
+    )
+
+    generate_parser.add_argument(
+        "--apex-version",
+        type=str,
+        default=DEFAULT_APEX_VERSION,
+        help=(
+            "Target Oracle APEX version. "
+            f"Default: {DEFAULT_APEX_VERSION}"
         ),
     )
 
@@ -425,6 +438,7 @@ def generate_artifact_command(
     input_path: Path,
     output_dir: Path,
     form_name: str | None = None,
+    apex_version: str = DEFAULT_APEX_VERSION,
 ) -> GeneratedArtifactBundle:
 
     blueprint = _build_blueprint_from_input(
@@ -435,6 +449,7 @@ def generate_artifact_command(
     return generate_apex_artifact_bundle(
         blueprint,
         output_dir=output_dir,
+        apex_version=apex_version,
     )
 
 def _validate_input_directory(
@@ -627,6 +642,7 @@ def main(
                 input_path=args.input,
                 output_dir=args.output,
                 form_name=args.form_name,
+                apex_version=args.apex_version,
             )
 
             print(
@@ -635,6 +651,11 @@ def main(
 
             print(
                 f"Manifest: {result.manifest_path}"
+            )
+
+            print(
+                "Target APEX: "
+                f"{result.target_apex_version}"
             )
 
             print()

@@ -984,6 +984,7 @@ def test_cli_parser_accepts_generate_command():
     assert args.input == GOLDEN_002
     assert args.output == Path("output")
     assert args.form_name is None
+    assert args.apex_version == "24.2"
 
 
 def test_cli_generate_creates_artifact_bundle(
@@ -1063,3 +1064,20 @@ def test_cli_generate_main_returns_zero(
         / "F2A_ORDERS_FORM_apex"
         / "manifest.json"
     ).exists()
+
+def test_cli_generate_rejects_unsupported_apex_version(
+    tmp_path,
+):
+    exit_code = main(
+        [
+            "generate",
+            "--input",
+            str(GOLDEN_002),
+            "--output",
+            str(tmp_path),
+            "--apex-version",
+            "99.9",
+        ]
+    )
+
+    assert exit_code == 2

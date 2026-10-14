@@ -15,14 +15,20 @@ from f2a.generation.blueprint import (
     ApexMigrationBlueprint,
 )
 
+from f2a.generation.apex_adapter import (
+    DEFAULT_APEX_VERSION,
+    get_apex_version_adapter,
+)
 
-ARTIFACT_SCHEMA_VERSION = "1.1"
+
+ARTIFACT_SCHEMA_VERSION = "1.2"
 
 
 @dataclass(frozen=True)
 class GeneratedArtifactBundle:
     root_dir: Path
     manifest_path: Path
+    target_apex_version: str
 
     page_paths: tuple[
         Path,
@@ -193,7 +199,12 @@ def generate_apex_artifact_bundle(
     blueprint: ApexMigrationBlueprint,
     *,
     output_dir: Path,
-) -> GeneratedArtifactBundle:
+    apex_version: str = DEFAULT_APEX_VERSION,
+    ) -> GeneratedArtifactBundle:
+
+    adapter = get_apex_version_adapter(
+        apex_version
+    )
 
     safe_form_name = _safe_name(
         blueprint.form_name
@@ -241,6 +252,7 @@ def generate_apex_artifact_bundle(
         generate_apex_sql_scaffold_file(
             blueprint,
             root_dir=root_dir,
+            apex_version=adapter.version,
         )
     )
 
@@ -320,6 +332,24 @@ def generate_apex_artifact_bundle(
         "generated_files": (
             generated_files
         ),
+                "target_apex_version": (
+            adapter.version
+        ),
+        "apex_family": (
+            adapter.family
+        ),
+        "apex_export_format": (
+            adapter.export_format
+        ),
+        "apex_readable_export_format": (
+            adapter.readable_export_format
+        ),
+        "deployment_tool": (
+            adapter.deployment_tool
+        ),
+        "component_generation_strategy": (
+            adapter.component_generation_strategy
+        ),
     }
 
     manifest_path = _write_json(
@@ -340,4 +370,7 @@ def generate_apex_artifact_bundle(
             relationships_path
         ),
         sql_path=sql_path,
+                target_apex_version=(
+            adapter.version
+        ),
     )

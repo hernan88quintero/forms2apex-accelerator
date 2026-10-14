@@ -6,8 +6,13 @@ from f2a.generation.blueprint import (
     ApexMigrationBlueprint,
 )
 
+from f2a.generation.apex_adapter import (
+    DEFAULT_APEX_VERSION,
+    get_apex_version_adapter,
+)
 
-SQL_RENDERER_VERSION = "1.0"
+
+SQL_RENDERER_VERSION = "1.1"
 SQL_RENDERER_MODE = "SCAFFOLD"
 
 
@@ -71,7 +76,13 @@ def _metadata_line(
 
 def render_apex_sql_scaffold(
     blueprint: ApexMigrationBlueprint,
+    *,
+    apex_version: str = DEFAULT_APEX_VERSION,
 ) -> str:
+
+    adapter = get_apex_version_adapter(
+        apex_version
+    )
 
     lines: list[str] = [
         "-- Forms2APEX Accelerator - APEX SQL Scaffold",
@@ -82,6 +93,30 @@ def render_apex_sql_scaffold(
         (
             "-- Renderer mode: "
             f"{SQL_RENDERER_MODE}"
+        ),
+        (
+            "-- Target APEX version: "
+            f"{adapter.version}"
+        ),
+        (
+            "-- APEX family: "
+            f"{adapter.family}"
+        ),
+        (
+            "-- Export format: "
+            f"{adapter.export_format}"
+        ),
+        (
+            "-- Readable export format: "
+            f"{adapter.readable_export_format}"
+        ),
+        (
+            "-- Deployment tool: "
+            f"{adapter.deployment_tool}"
+        ),
+        (
+            "-- Component generation strategy: "
+            f"{adapter.component_generation_strategy}"
         ),
         (
             "-- Source blueprint schema: "
@@ -121,6 +156,9 @@ def render_apex_sql_scaffold(
             ),
             risk=blueprint.overall_risk,
             effort=blueprint.total_effort,
+                        target_apex_version=(
+                adapter.version
+            ),
         ),
     ]
 
@@ -335,6 +373,7 @@ def generate_apex_sql_scaffold_file(
     blueprint: ApexMigrationBlueprint,
     *,
     root_dir: Path,
+    apex_version: str = DEFAULT_APEX_VERSION,
 ) -> Path:
 
     sql_dir = (
@@ -358,7 +397,8 @@ def generate_apex_sql_scaffold_file(
 
     output_path.write_text(
         render_apex_sql_scaffold(
-            blueprint
+            blueprint,
+            apex_version=apex_version
         ),
         encoding="utf-8",
     )

@@ -224,3 +224,29 @@ def test_sql_renderer_generates_file(
             / "F2A_ORDERS_FORM_scaffold.sql"
         )
     )
+
+def test_sql_renderer_contains_target_apex_version():
+    blueprint = _build_blueprint(
+        GOLDEN_002,
+        "F2A_ORDERS_FORM",
+    )
+
+    content = render_apex_sql_scaffold(
+        blueprint,
+        apex_version="24.2",
+    )
+
+    assert (
+        "Target APEX version: 24.2"
+        in content
+    )
+
+    assert (
+        "Readable export format: YAML"
+        in content
+    )
+
+    assert (
+        "Deployment tool: SQLcl"
+        in content
+    )
