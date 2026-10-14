@@ -253,3 +253,34 @@ def test_artifact_manifest_lists_generated_files(
         "relationships.json"
         in generated_files
     )
+
+def test_artifact_bundle_contains_sql_scaffold(
+        tmp_path,
+    ):
+    blueprint = _build_blueprint(
+        GOLDEN_002,
+        "F2A_ORDERS_FORM",
+    )
+
+    result = generate_apex_artifact_bundle(
+        blueprint,
+        output_dir=tmp_path,
+    )
+
+    assert result.sql_path.exists()
+
+    assert (
+        result.sql_path.name
+        == "F2A_ORDERS_FORM_scaffold.sql"
+    )
+
+    manifest = json.loads(
+        result.manifest_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert (
+        "sql/F2A_ORDERS_FORM_scaffold.sql"
+        in manifest["generated_files"]
+    )

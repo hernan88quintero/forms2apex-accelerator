@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from f2a.generation.sql_renderer import (
+    generate_apex_sql_scaffold_file,
+)
+
 from dataclasses import (
     asdict,
     dataclass,
@@ -12,7 +16,7 @@ from f2a.generation.blueprint import (
 )
 
 
-ARTIFACT_SCHEMA_VERSION = "1.0"
+ARTIFACT_SCHEMA_VERSION = "1.1"
 
 
 @dataclass(frozen=True)
@@ -29,6 +33,7 @@ class GeneratedArtifactBundle:
 
     lovs_path: Path | None
     relationships_path: Path | None
+    sql_path: Path
 
 
 def _safe_name(
@@ -232,6 +237,13 @@ def generate_apex_artifact_bundle(
         )
     )
 
+    sql_path = (
+        generate_apex_sql_scaffold_file(
+            blueprint,
+            root_dir=root_dir,
+        )
+    )
+
     generated_files = [
         str(
             path.relative_to(
@@ -244,6 +256,7 @@ def generate_apex_artifact_bundle(
         for path in (
             *page_paths,
             migration_plan_path,
+            sql_path,
         )
     ]
 
@@ -326,4 +339,5 @@ def generate_apex_artifact_bundle(
         relationships_path=(
             relationships_path
         ),
+        sql_path=sql_path,
     )
